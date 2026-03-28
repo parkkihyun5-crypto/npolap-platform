@@ -1,6 +1,103 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+type ContentType = {
+  siteName: string;
+  siteSubtitle: string;
+  heroBadge: string;
+  heroTitle: string;
+  heroDescription: string;
+  primaryCta: string;
+  secondaryCta: string;
+  topMenu1: string;
+  topMenu2: string;
+  consultingTitle: string;
+  consultingDescription: string;
+  establishmentTitle: string;
+  establishmentDescription: string;
+  brandingTitle: string;
+  brandingDescription: string;
+  paymentTitle: string;
+  paymentDescription: string;
+  contactTitle: string;
+  contactDescription: string;
+  footerText: string;
+  phone: string;
+  email: string;
+  bankName: string;
+  bankAccount: string;
+  bankHolder: string;
+  primary: string;
+  secondary: string;
+  accent: string;
+  bodyBg: string;
+  cardBg: string;
+  textColor: string;
+};
+
+type ConsultingService = {
+  id: string;
+  title: string;
+  desc: string;
+};
+
+type EstablishmentType = {
+  id: string;
+  name: string;
+  legal: string;
+  procedure: string;
+  difficulty: string;
+  period: string;
+  budget: string;
+  summary: string;
+  details: [string, string][];
+};
+
+type EstablishmentPackage = {
+  id: string;
+  name: string;
+  subtitle: string;
+  price: number;
+  desc: string;
+  popular?: boolean;
+};
+
+type BrandingPackage = {
+  id: string;
+  name: string;
+  subtitle: string;
+  price: number;
+  desc: string;
+  popular?: boolean;
+};
+
+type BrandingAddon = {
+  id: string;
+  label: string;
+  price: number;
+};
+
+type Direction = {
+  id: string;
+  label: string;
+};
+
+type InquiryFormType = {
+  organization: string;
+  name: string;
+  phone: string;
+  email: string;
+  description: string;
+};
+
+type ThemeType = {
+  primary: string;
+  secondary: string;
+  accent: string;
+  bodyBg: string;
+  cardBg: string;
+  textColor: string;
+};
 
 // --- 1. 타입 인터페이스 정의 (TypeScript 안정성 확보) ---
 
