@@ -310,7 +310,7 @@ function copyToClipboard(text: string) {
   }
 }
 
-function loadJson(key, fallback) {
+function loadJson(key: string, fallback: any) {
   if (typeof window === "undefined") return fallback;
   try {
     const raw = window.localStorage.getItem(key);
