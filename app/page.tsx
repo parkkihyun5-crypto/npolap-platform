@@ -296,7 +296,7 @@ const ADMIN_MENU = [
   { id: "deployment", label: "배포·도메인 안내" },
 ];
 
-function formatKRW(value) {
+function formatKRW(value: number) {
   return new Intl.NumberFormat("ko-KR", {
     style: "currency",
     currency: "KRW",
