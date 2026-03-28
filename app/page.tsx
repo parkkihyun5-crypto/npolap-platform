@@ -304,7 +304,7 @@ function formatKRW(value: number) {
   }).format(value || 0);
 }
 
-function copyToClipboard(text) {
+function copyToClipboard(text: string) {
   if (typeof navigator !== "undefined" && navigator.clipboard) {
     navigator.clipboard.writeText(text);
   }
