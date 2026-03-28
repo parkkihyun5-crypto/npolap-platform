@@ -2,11 +2,12 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 
-// --- Types & Interfaces ---
+// --- 인터페이스 정의 (TypeScript 안정성 확보) ---
 interface Service {
   id: string;
   title: string;
   desc: string;
+  icon?: string;
 }
 
 interface SiteConfig {
@@ -32,8 +33,6 @@ interface SiteConfig {
   services: Service[];
   establishmentIntroTitle: string;
   establishmentIntroDescription: string;
-  brandingIntroTitle: string;
-  brandingIntroDescription: string;
 }
 
 interface PackageItem {
@@ -48,560 +47,223 @@ interface PackageItem {
   popular?: boolean;
 }
 
-interface AddonItem {
-  id: string;
-  label: string;
-  price: number;
-}
-
-interface Inquiry {
-  id: number;
-  organization: string;
-  name: string;
-  phone: string;
-  email: string;
-  description: string;
-  establishmentPackage?: string;
-  package?: string;
-  addons: string[];
-  direction?: string;
-  establishmentType: string;
-  total: number;
-  createdAt: string;
-}
-
-// --- Constants ---
-const STORAGE_KEYS = {
-  site: "pilu-platform-site-v3",
-  auth: "pilu-platform-auth-v3",
-  inquiries: "pilu-platform-inquiries-v3",
-};
-
-const ADMIN_CREDENTIAL = {
-  username: "admin",
-  password: "ILU2026!",
-};
-
+// --- 상수 데이터 (고급화된 기본 설정) ---
 const DEFAULT_SITE: SiteConfig = {
-  platformName: "공익법인 종합컨설팅 플랫폼",
-  platformSubtitle: "설립·정관·세무·브랜딩·운영까지 통합 지원",
-  heroTitle: "공익법인 설립과 운영에 필요한 모든 컨설팅을 하나의 플랫폼에서",
-  heroDescription:
-    "법인 설립, 정관 검토, 고유번호증·계좌개설, 공익법인 운영, 문서작성, 브랜딩, 홈페이지 구축까지 실무 중심으로 연결하는 통합 컨설팅 플랫폼입니다.",
-  primaryButton: "설립유형 검토 보기",
-  secondaryButton: "브랜딩 서비스 보기",
-  topNotice: "International Leaders Union · Public Interest Corporation Consulting Platform",
-  accent: "#C9A86A",
-  primary: "#0A1F33",
-  secondary: "#163D68",
-  bodyBg: "#F8FAFC",
+  platformName: "ILU 공익법인 플랫폼",
+  platformSubtitle: "Public Interest Corp. Total Consulting",
+  heroTitle: "공익법인의 가치를 세우고,\n지속 가능한 운영을 설계합니다.",
+  heroDescription: "법인 설립부터 정관 설계, 행정 실무, 그리고 기관의 정체성을 담은 브랜딩까지. 국제지도자연합(ILU)의 전문 역량으로 공익법인의 시작과 성장을 함께합니다.",
+  primaryButton: "설립 유형 자가진단",
+  secondaryButton: "브랜딩 포트폴리오",
+  topNotice: "2026 International Leaders Union | 공익법인 설립 운영 지원 본부",
+  accent: "#D4AF37", // Metallic Gold
+  primary: "#0F172A", // Deep Slate
+  secondary: "#1E293B",
+  bodyBg: "#FDFDFD",
   cardBg: "#FFFFFF",
-  textColor: "#0F172A",
-  phone: "010-0000-0000",
-  email: "contact@example.com",
+  textColor: "#1E293B",
+  phone: "02-1234-5678",
+  email: "ilu.foundation@example.com",
   bankName: "우리은행",
   bankAccount: "1005-404-403203",
   bankHolder: "국제지도자연합",
-  footerText: "© International Leaders Union. All rights reserved.",
+  footerText: "© 2026 International Leaders Union. All rights reserved.",
   services: [
-    { id: "corp-establishment", title: "법인 설립 컨설팅", desc: "사단법인·공익법인 설립 준비, 정관 설계, 창립총회 문서, 인허가 대응을 체계적으로 지원합니다." },
-    { id: "governance", title: "운영·거버넌스 자문", desc: "정관 변경, 임원 구성, 회의록, 규정 정비, 의사결정 구조 설계를 지원합니다." },
-    { id: "tax-compliance", title: "세무·행정 실무", desc: "고유번호증, 계좌개설, 증빙 정리, 신고 준비, 행정 제출용 문서 정리를 지원합니다." },
-    { id: "branding", title: "CI·BI 브랜딩 서비스", desc: "기관의 신뢰도를 높이는 로고, 아이덴티티, 브랜드 문서 체계를 설계합니다." },
+    { id: "s1", title: "법인 설립 전략", desc: "주무관청 협의 및 정관 설계 등 인허가 전 과정을 밀착 지원합니다.", icon: "🏛️" },
+    { id: "s2", title: "운영 거버넌스", desc: "이사회 구성 및 회의록 작성 등 법적 안정성을 보장하는 운영 체계를 구축합니다.", icon: "⚖️" },
+    { id: "s3", title: "세무/회계 실무", desc: "공익법인 지정 및 고유번호증 발급 등 필수 행정 절차를 대행합니다.", icon: "📊" },
+    { id: "s4", title: "프리미엄 브랜딩", desc: "기관의 신뢰도를 높이는 CI/BI 및 웹사이트 아이덴티티를 제안합니다.", icon: "🎨" },
   ],
-  establishmentIntroTitle: "비영리·비영리법인 설립 유형별 검토사항",
-  establishmentIntroDescription: "임의단체, 사단법인, 재단법인, 공익법인 중 어떤 형태가 목표와 운영 구조에 가장 적합한지 비교·검토할 수 있도록 설계한 메뉴입니다.",
-  brandingIntroTitle: "브랜딩 서비스",
-  brandingIntroDescription: "아래 메뉴는 공익법인 종합컨설팅 플랫폼 안에 통합된 브랜딩 서비스 섹션입니다. 고객은 패키지를 선택하고 즉시 견적을 확인할 수 있습니다.",
+  establishmentIntroTitle: "최적의 설립 형태 검토",
+  establishmentIntroDescription: "활동 목적과 자산 규모에 따라 가장 효율적인 법인 형태를 선택하는 것이 첫 걸음입니다.",
 };
 
-const DEFAULT_PACKAGES: PackageItem[] = [
-  { id: "starter", name: "STARTER", subtitle: "BI Lite", price: 1500000, range: "30~150만원", description: "개인·초기 단체를 위한 로고 중심 패키지", features: ["로고 1안", "기본 컬러 제안", "수정 1~2회", "PNG/JPG 제공"], badge: "입문형" },
-  { id: "standard", name: "STANDARD", subtitle: "BI Pro", price: 3000000, range: "200~500만원", description: "스타트업과 중소기관에 적합한 표준 패키지", features: ["로고 2~3안", "컬러 시스템", "수정 3~5회", "AI/PNG 제공"], badge: "표준형" },
-  { id: "premium", name: "PREMIUM", subtitle: "CI Basic", price: 8000000, range: "600~1,200만원", description: "법인·NGO·기관을 위한 전략형 CI 패키지", features: ["로고 3~5안", "브랜드 컨셉", "응용 디자인", "기본 가이드북"], badge: "가장 많이 선택", popular: true },
-  { id: "signature", name: "SIGNATURE", subtitle: "CI Full", price: 20000000, range: "1,500~3,000만원", description: "국제기관급 아이덴티티 시스템 구축 패키지", features: ["전략 기반 설계", "다층 로고 시스템", "확장 가이드북", "브랜드 자산 구축"], badge: "최상위" },
+const BRANDING_PACKAGES: PackageItem[] = [
+  { id: "basic", name: "ESSENTIAL", subtitle: "BI Foundation", price: 2500000, range: "250만원~", description: "소규모 단체 및 초기 법인을 위한 필수 브랜딩 세트", features: ["로고 시스템(국/영문)", "컬러 가이드", "명함/서식류 디자인"], badge: "Basic" },
+  { id: "pro", name: "PROFESSIONAL", subtitle: "Identity System", price: 5500000, range: "550만원~", description: "중대형 NGO 및 사단법인을 위한 통합 아이덴티티", features: ["심볼 마크 심화 개발", "브랜드 어플리케이션 5종", "웹 가이드북"], badge: "Most Popular", popular: true },
+  { id: "signature", name: "SIGNATURE", subtitle: "Total Heritage", price: 15000000, range: "1,500만원~", description: "국제기구 및 대형 재단을 위한 헤리티지 구축 패키지", features: ["브랜드 전략 컨설팅", "전용 폰트 제안", "공간/사이니지 디자인 가이드"], badge: "Premium" },
 ];
 
-const DEFAULT_ADDONS: AddonItem[] = [
-  { id: "naming", label: "네이밍 개발", price: 2000000 },
-  { id: "slogan", label: "슬로건 개발", price: 1000000 },
-  { id: "ppt", label: "PPT 템플릿", price: 1000000 },
-  { id: "website", label: "홈페이지 UI 설계", price: 5000000 },
-  { id: "sns", label: "SNS 브랜드 키트", price: 1000000 },
-  { id: "signage", label: "간판·사인 디자인", price: 2000000 },
-];
+// --- 헬퍼 함수 ---
+const formatPrice = (v: number) => new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW" }).format(v);
 
-const DEFAULT_FOUNDATION_PACKAGES: PackageItem[] = [
-  { id: "ngo-lite", name: "임의단체 설립 패키지", subtitle: "Basic Filing", price: 500000, range: "50만원", description: "세무서 신고 및 기본 운영 구조 설계", features: ["단체 성격 검토", "신고 서류 정리", "기본 운영구조 자문", "초기 문서 체크리스트"], badge: "입문형" },
-  { id: "association-consulting", name: "사단법인 설립 패키지", subtitle: "Association Setup", price: 3000000, range: "300만원", description: "정관 설계, 주무관청 대응, 사무국 실사 준비까지 포함한 표준 패키지", features: ["정관 설계", "창립총회 문안", "허가 서류 자문", "사무국 실사 준비"], badge: "표준형", popular: true },
-  { id: "foundation-consulting", name: "재단법인 설립 패키지", subtitle: "Foundation Setup", price: 7000000, range: "700만원", description: "출연재산 구조, 이사회 설계, 허가 전략을 포함한 고난도 패키지", features: ["출연재산 구조 검토", "이사회 체계 설계", "허가 전략 자문", "장기 운영모델 설계"], badge: "고급형" },
-  { id: "public-benefit-consulting", name: "공익법인 지정 패키지", subtitle: "Public Benefit", price: 12000000, range: "1,200만원", description: "공익법인 지정 전략, 세제 구조, 공익성 입증체계까지 포함한 최고급 패키지", features: ["공익성 구조 설계", "세제 요건 검토", "지정 전략 자문", "운영 통제체계 설계"], badge: "최상위" },
-];
-
-const DIRECTIONS = [
-  { id: "global", icon: "🌍", label: "글로벌 기관형" },
-  { id: "public", icon: "🏛", label: "공공기관형" },
-  { id: "business", icon: "💼", label: "기업형" },
-  { id: "culture", icon: "🎨", label: "문화예술형" },
-  { id: "sustainability", icon: "🌱", label: "지속가능성 중심" },
-];
-
-const ESTABLISHMENT_TYPES = [
-  { id: "voluntary", name: "비영리 임의단체", legalNature: "자율적 모임", procedure: "세무서 신고", difficulty: "매우 쉬움", asset: "없음", structure: "대표 중심", decision: "대표 결정", term: "종신직 가능", authority: "대표 개인 중심", license: "대표 개인 중심", business: "친목·활동", donation: "제한", receipt: "불가", government: "낮음", credibility: "낮음", finance: "회비 중심", period: "1~3일", burden: "낮음", cost: "30~50만", summary: "출발은 빠르지만 공신력과 제도적 확장성은 제한적입니다." },
-  { id: "association", name: "사단법인(비영리)", legalNature: "회원 기반 법인", procedure: "주무관청 허가 + 법원 등기", difficulty: "어려움", asset: "법적 기준 없음 (통상 3천만~1억)", structure: "회원 중심", decision: "총회 중심 민주 구조", term: "임기제 필수 (2~4년)", authority: "법인 중심", license: "법인 중심", business: "공익·협력 사업", donation: "일정 금액 이상 신고", receipt: "지정기부금단체 지정 시 가능", government: "정부 위탁사업 가능", credibility: "높음", finance: "회비 + 보조금", period: "3~6개월", burden: "중간", cost: "200~300만", summary: "공익성과 회원 구조를 갖춘 가장 표준적인 비영리법인 모델입니다." },
-  { id: "foundation", name: "재단법인(비영리)", legalNature: "자산 기반 법인", procedure: "주무관청 허가 + 법원 등기", difficulty: "매우 어려움", asset: "3억~50억", structure: "이사회 중심", decision: "이사회 중심", term: "임기제 필수", authority: "출연 재산 기반 중심", license: "재단 중심", business: "연구·장학·재단사업", donation: "적극 가능", receipt: "지정 시 가능", government: "정책 연구 협력", credibility: "매우 높음", finance: "기금 수익", period: "6개월~1년", burden: "높음", cost: "300~500만", summary: "충분한 출연재산과 장기적 공익사업 구조가 있을 때 적합합니다." },
-  { id: "public-benefit", name: "공익법인(지정)", legalNature: "정부 인증 공익기관", procedure: "법인 설립 후 국세청 지정", difficulty: "최고 수준", asset: "재단 수준 + 공익 요건", structure: "공익 거버넌스", decision: "이사회 + 공익 감독", term: "연임 제한 권고", authority: "공익 목적 중심", license: "공익 목적 중심", business: "사회 공헌 및 정책 협력", donation: "적극 가능", receipt: "가능 (세제 혜택)", government: "정책 수행 파트너", credibility: "최고", finance: "정부 + 대기업 후원", period: "법인 설립 후 추가 3개월", burden: "매우 높음", cost: "300~700만", summary: "최고 수준의 공신력을 갖지만 관리 기준과 공익성 요건이 매우 엄격합니다." },
-];
-
-const ASSOCIATION_REVIEW_POINTS = [
-  { title: "목적 조항", desc: "법인의 설립 취지가 공익에 부합하고 구체적인지 검토합니다." },
-  { title: "사업 범위", desc: "정관상 사업이 실제로 실행 가능하며 주무관청 소관 업무인지 확인합니다." },
-  { title: "재산 출연", desc: "기본재산과 운영재산이 사업 수행에 충분한지 판단합니다." },
-  { title: "임원 구성", desc: "목적사업 수행에 필요한 전문성과 도덕성을 갖춘 인원인지 살핍니다." },
-  { title: "공익성 판단", desc: "법인의 활동이 특정 개인이나 집단에 귀속되지 않는 구조인지 검토합니다." },
-];
-
-const ADMIN_MENU = [
-  { id: "dashboard", label: "대시보드" },
-  { id: "site", label: "홈페이지 설정" },
-  { id: "establishment", label: "설립유형·패키지 관리" },
-  { id: "branding", label: "브랜딩 메뉴 관리" },
-  { id: "inquiries", label: "상담 신청 관리" },
-  { id: "deployment", label: "배포·도메인 안내" },
-];
-
-// --- Helper Functions ---
-function formatKRW(value: number) {
-  return new Intl.NumberFormat("ko-KR", {
-    style: "currency",
-    currency: "KRW",
-    maximumFractionDigits: 0,
-  }).format(value || 0);
-}
-
-function copyToClipboard(text: string) {
-  if (typeof navigator !== "undefined" && navigator.clipboard) {
-    navigator.clipboard.writeText(text);
-  }
-}
-
-function loadJson(key: string, fallback: any) {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function saveJson(key: string, value: any) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(key, JSON.stringify(value));
-}
-
-// --- UI Components ---
-function SectionHeading({ eyebrow, title, description, center = false }: { eyebrow: string; title: string; description?: string; center?: boolean }) {
-  return (
-    <div className={center ? "mx-auto max-w-3xl text-center" : "max-w-3xl"}>
-      <p className="text-sm font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--accent)" }}>
-        {eyebrow}
-      </p>
-      <h2 className="mt-3 text-3xl font-bold md:text-4xl">{title}</h2>
-      {description ? <p className="mt-4 text-slate-600">{description}</p> : null}
-    </div>
-  );
-}
-
-function AdminInput({ label, value, onChange, textarea = false, type = "text" }: { label: string; value: string; onChange: (v: string) => void; textarea?: boolean; type?: string }) {
-  return (
-    <div>
-      <label className="mb-2 block text-sm font-semibold text-slate-700">{label}</label>
-      {textarea ? (
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          rows={4}
-          className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-800"
-        />
-      ) : (
-        <input
-          type={type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-800"
-        />
-      )}
-    </div>
-  );
-}
-
-function AdminColor({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <div>
-      <label className="mb-2 block text-sm font-semibold text-slate-700">{label}</label>
-      <div className="flex items-center gap-3 rounded-xl border border-slate-300 bg-white px-3 py-2">
-        <input type="color" value={value} onChange={(e) => onChange(e.target.value)} className="h-10 w-12 border-0 bg-transparent p-0" />
-        <input value={value} onChange={(e) => onChange(e.target.value)} className="flex-1 border-0 bg-transparent text-sm outline-none" />
-      </div>
-    </div>
-  );
-}
-
-function PackageCard({ item, active, onClick }: { item: PackageItem; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`group rounded-[24px] border p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl ${
-        active ? "border-slate-900 ring-2 ring-slate-200" : "border-slate-200"
-      }`}
-      style={{ backgroundColor: "var(--card-bg)", borderColor: item.popular ? "var(--accent)" : undefined }}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold" style={{ color: "var(--accent)" }}>{item.badge}</p>
-          <h3 className="mt-2 text-2xl font-bold">{item.name}</h3>
-          <p className="text-sm text-slate-500">{item.subtitle}</p>
-        </div>
-        {item.popular ? (
-          <span className="rounded-full px-3 py-1 text-xs font-bold text-[#0A1F33]" style={{ backgroundColor: "var(--accent)" }}>
-            추천
-          </span>
-        ) : null}
-      </div>
-      <div className="mt-6 text-3xl font-bold" style={{ color: "var(--primary)" }}>{item.range}</div>
-      <p className="mt-4 min-h-[56px] text-sm leading-6 text-slate-600">{item.description}</p>
-      <ul className="mt-6 space-y-3 text-sm text-slate-700">
-        {item.features.map((feature) => (
-          <li key={feature} className="flex items-start gap-3">
-            <span className="mt-1 inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--accent)" }} />
-            <span>{feature}</span>
-          </li>
-        ))}
-      </ul>
-      <div
-        className="mt-8 rounded-xl px-4 py-3 text-center font-semibold text-white"
-        style={{ backgroundColor: active ? "var(--primary)" : item.popular ? "var(--secondary)" : "#CBD5E1", color: active || item.popular ? "white" : "#0F172A" }}
-      >
-        {active ? "선택됨" : "이 패키지 선택"}
-      </div>
-    </button>
-  );
-}
-
-function ServiceCard({ title, desc }: { title: string; desc: string }) {
-  return (
-    <div className="rounded-[24px] border border-slate-200 p-6 shadow-sm" style={{ backgroundColor: "var(--card-bg)" }}>
-      <h3 className="text-xl font-bold">{title}</h3>
-      <p className="mt-3 text-sm leading-7 text-slate-600">{desc}</p>
-    </div>
-  );
-}
-
-function EstablishmentTypeCard({ item, active, onClick }: { item: any; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-[24px] border p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl ${
-        active ? "border-slate-900 ring-2 ring-slate-200" : "border-slate-200"
-      }`}
-      style={{ backgroundColor: "var(--card-bg)", borderColor: active ? "var(--accent)" : undefined }}
-    >
-      <div className="text-sm font-semibold" style={{ color: "var(--accent)" }}>{item.legalNature}</div>
-      <h3 className="mt-2 text-2xl font-bold">{item.name}</h3>
-      <p className="mt-3 text-sm leading-7 text-slate-600">{item.summary}</p>
-      <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-        <div className="rounded-xl bg-slate-50 p-3">
-          <div className="text-xs text-slate-500">설립 절차</div>
-          <div className="mt-1 font-semibold text-slate-800">{item.procedure}</div>
-        </div>
-        <div className="rounded-xl bg-slate-50 p-3">
-          <div className="text-xs text-slate-500">설립 난이도</div>
-          <div className="mt-1 font-semibold text-slate-800">{item.difficulty}</div>
-        </div>
-        <div className="rounded-xl bg-slate-50 p-3">
-          <div className="text-xs text-slate-500">설립 기간</div>
-          <div className="mt-1 font-semibold text-slate-800">{item.period}</div>
-        </div>
-        <div className="rounded-xl bg-slate-50 p-3">
-          <div className="text-xs text-slate-500">행정 부담</div>
-          <div className="mt-1 font-semibold text-slate-800">{item.burden}</div>
-        </div>
-      </div>
-    </button>
-  );
-}
-
-function ComparisonRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="grid grid-cols-[120px_1fr] gap-4 border-b border-slate-100 py-3 text-sm last:border-b-0">
-      <div className="font-semibold text-slate-500">{label}</div>
-      <div className="text-slate-800">{value}</div>
-    </div>
-  );
-}
-
-// --- Main App Component ---
-export default function PublicInterestConsultingPlatform() {
+// --- 컴포넌트 ---
+export default function PremiumPlatform() {
   const [site, setSite] = useState<SiteConfig>(DEFAULT_SITE);
-  const [packages, setPackages] = useState<PackageItem[]>(DEFAULT_PACKAGES);
-  const [foundationPackages, setFoundationPackages] = useState<PackageItem[]>(DEFAULT_FOUNDATION_PACKAGES);
-  const [addons, setAddons] = useState<AddonItem[]>(DEFAULT_ADDONS);
-  const [selectedPackage, setSelectedPackage] = useState("premium");
-  const [selectedFoundationPackage, setSelectedFoundationPackage] = useState("association-consulting");
-  const [selectedAddons, setSelectedAddons] = useState<string[]>(["naming", "ppt"]);
-  const [selectedDirection, setSelectedDirection] = useState("global");
-  const [selectedEstablishment, setSelectedEstablishment] = useState("association");
-  const [vatIncluded, setVatIncluded] = useState(false);
-  const [form, setForm] = useState({ organization: "", name: "", phone: "", email: "", description: "" });
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [view, setView] = useState("site");
-  const [adminTab, setAdminTab] = useState("dashboard");
-  const [adminLoggedIn, setAdminLoggedIn] = useState(false);
-  const [loginError, setLoginError] = useState("");
-  const [saveMessage, setSaveMessage] = useState("");
-  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [view, setView] = useState<"user" | "admin">("user");
+  const [selectedPkg, setSelectedPkg] = useState("pro");
+  const [isAdminAuth, setIsAdminAuth] = useState(false);
 
+  // 로컬 스토리지 연동 (배포 환경 고려)
   useEffect(() => {
-    const savedSite = loadJson(STORAGE_KEYS.site, DEFAULT_SITE);
-    const savedAuth = loadJson(STORAGE_KEYS.auth, { loggedIn: false });
-    const savedInquiries = loadJson(STORAGE_KEYS.inquiries, []);
-    setSite(savedSite);
-    setAdminLoggedIn(Boolean(savedAuth.loggedIn));
-    setInquiries(savedInquiries);
+    const saved = localStorage.getItem("ilu_site_config");
+    if (saved) setSite(JSON.parse(saved));
   }, []);
 
-  useEffect(() => {
-    saveJson(STORAGE_KEYS.site, site);
-  }, [site]);
-
-  useEffect(() => {
-    saveJson(STORAGE_KEYS.auth, { loggedIn: adminLoggedIn });
-  }, [adminLoggedIn]);
-
-  useEffect(() => {
-    saveJson(STORAGE_KEYS.inquiries, inquiries);
-  }, [inquiries]);
-
-  const pkg = packages.find((item) => item.id === selectedPackage);
-  const foundationPkg = foundationPackages.find((item) => item.id === selectedFoundationPackage);
-  const selectedType = ESTABLISHMENT_TYPES.find((item) => item.id === selectedEstablishment) || ESTABLISHMENT_TYPES[1];
-  const addonTotal = selectedAddons.reduce((sum, id) => {
-    const found = addons.find((item) => item.id === id);
-    return sum + (found?.price || 0);
-  }, 0);
-  const subtotal = (pkg?.price || 0) + addonTotal + (foundationPkg?.price || 0);
-  const vatAmount = Math.round(subtotal * 0.1);
-  const total = vatIncluded ? subtotal + vatAmount : subtotal;
-
-  const themeVars = useMemo(
-    () => ({
-      "--primary": site.primary,
-      "--secondary": site.secondary,
-      "--accent": site.accent,
-      "--card-bg": site.cardBg,
-    } as React.CSSProperties),
-    [site]
-  );
-
-  const selectedAddonLabels = selectedAddons
-    .map((id) => addons.find((item) => item.id === id)?.label)
-    .filter((label): label is string => !!label);
-
-  const toggleAddon = (id: string) => {
-    setSelectedAddons((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+  const handleSave = () => {
+    localStorage.setItem("ilu_site_config", JSON.stringify(site));
+    alert("설정이 저장되었습니다.");
   };
 
-  const updateSite = (key: keyof SiteConfig, value: any) => {
-    setSite((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const updateService = (index: number, key: keyof Service, value: string) => {
-    setSite((prev) => ({
-      ...prev,
-      services: prev.services.map((item, i) => (i === index ? { ...item, [key]: value } : item)),
-    }));
-  };
-
-  const updatePackage = (index: number, key: keyof PackageItem, value: any) => {
-    setPackages((prev) => prev.map((item, i) => (i === index ? { ...item, [key]: key === "price" ? Number(value) || 0 : value } : item)));
-  };
-
-  const updateAddon = (index: number, key: keyof AddonItem, value: any) => {
-    setAddons((prev) => prev.map((item, i) => (i === index ? { ...item, [key]: key === "price" ? Number(value) || 0 : value } : item)));
-  };
-
-  const updateFoundationPackage = (index: number, key: keyof PackageItem, value: any) => {
-    setFoundationPackages((prev) => prev.map((item, i) => (i === index ? { ...item, [key]: key === "price" ? Number(value) || 0 : value } : item)));
-  };
-
-  const handleLogin = (un: string, pw: string) => {
-    if (un === ADMIN_CREDENTIAL.username && pw === ADMIN_CREDENTIAL.password) {
-      setAdminLoggedIn(true);
-      setLoginError("");
-      setView("admin");
-    } else {
-      setLoginError("아이디 또는 비밀번호가 올바르지 않습니다.");
-    }
-  };
-
-  const logout = () => {
-    setAdminLoggedIn(false);
-    setView("site");
-    setAdminTab("dashboard");
-  };
-
-  const persistNotice = () => {
-    saveJson(STORAGE_KEYS.site, site);
-    setSaveMessage("관리자 변경사항이 저장되었습니다.");
-    setTimeout(() => setSaveMessage(""), 1800);
-  };
-
-  const resetSite = () => {
-    setSite(DEFAULT_SITE);
-    setPackages(DEFAULT_PACKAGES);
-    setAddons(DEFAULT_ADDONS);
-    setFoundationPackages(DEFAULT_FOUNDATION_PACKAGES);
-    setSaveMessage("기본값으로 초기화했습니다.");
-    setTimeout(() => setSaveMessage(""), 1800);
-  };
-
-  const submitInquiry = (e: React.FormEvent) => {
-    e.preventDefault();
-    const record: Inquiry = {
-      id: Date.now(),
-      ...form,
-      establishmentPackage: foundationPkg?.name,
-      package: pkg?.name,
-      addons: selectedAddonLabels,
-      direction: DIRECTIONS.find((item) => item.id === selectedDirection)?.label,
-      establishmentType: selectedType.name,
-      total,
-      createdAt: new Date().toLocaleString("ko-KR"),
-    };
-    setInquiries((prev) => [record, ...prev]);
-    setIsSubmitted(true);
-    setForm({ organization: "", name: "", phone: "", email: "", description: "" });
-    setTimeout(() => setIsSubmitted(false), 2000);
-  };
-
-  const removeInquiry = (id: number) => {
-    setInquiries((prev) => prev.filter((item) => item.id !== id));
-  };
-
-  // --- Render Sections ---
   return (
-    <div style={{ ...themeVars, backgroundColor: site.bodyBg, color: site.textColor }} className="min-h-screen">
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-6 lg:px-8">
-          <div>
-            <div className="text-lg font-bold" style={{ color: site.primary }}>{site.platformName}</div>
-            <div className="text-xs text-slate-500">{site.platformSubtitle}</div>
+    <div className="min-h-screen font-sans antialiased" style={{ backgroundColor: site.bodyBg, color: site.textColor }}>
+      
+      {/* GNB */}
+      <nav className="sticky top-0 z-50 border-b border-slate-200/60 bg-white/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-slate-950 flex items-center justify-center text-white font-bold">ILU</div>
+            <div>
+              <h1 className="text-lg font-bold tracking-tight text-slate-950">{site.platformName}</h1>
+              <p className="text-[10px] font-medium uppercase tracking-widest text-slate-400">{site.platformSubtitle}</p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={() => setView("site")} className={`rounded-lg px-4 py-2 text-sm font-semibold ${view === "site" ? "text-white" : "bg-slate-100 text-slate-700"}`} style={view === "site" ? { backgroundColor: site.primary } : {}}>홈페이지</button>
-            <button type="button" onClick={() => setView("admin")} className={`rounded-lg px-4 py-2 text-sm font-semibold ${view === "admin" ? "text-white" : "bg-slate-100 text-slate-700"}`} style={view === "admin" ? { backgroundColor: site.primary } : {}}>관리자</button>
-            {adminLoggedIn && <button type="button" onClick={logout} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">로그아웃</button>}
+          <div className="flex gap-4">
+            <button onClick={() => setView("user")} className={`text-sm font-semibold ${view === "user" ? "text-amber-600" : "text-slate-500"}`}>홈페이지</button>
+            <button onClick={() => setView("admin")} className={`text-sm font-semibold ${view === "admin" ? "text-amber-600" : "text-slate-500"}`}>관리자</button>
           </div>
         </div>
-      </header>
+      </nav>
 
-      {view === "admin" ? (
-        <main className="mx-auto max-w-7xl px-4 py-8 md:px-6 lg:px-8">
-          {!adminLoggedIn ? (
-            <div className="mx-auto max-w-md rounded-[28px] border border-slate-200 bg-white p-8 shadow-xl">
-              <div className="mb-6 text-center">
-                <h2 className="text-3xl font-bold text-slate-900">관리자 로그인</h2>
-              </div>
-              <div className="space-y-4">
-                <AdminInput label="아이디" value={form.organization} onChange={(v) => setForm(f => ({...f, organization: v}))} />
-                <AdminInput label="비밀번호" type="password" value={form.name} onChange={(v) => setForm(f => ({...f, name: v}))} />
-              </div>
-              {loginError && <div className="mt-4 text-rose-600 text-sm">{loginError}</div>}
-              <button onClick={() => handleLogin(form.organization, form.name)} className="mt-6 w-full rounded-xl bg-slate-900 px-4 py-3 font-bold text-white">로그인</button>
-            </div>
-          ) : (
-            <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
-              <aside className="rounded-[28px] bg-slate-900 p-5 text-white shadow-xl">
-                <nav className="mt-6 space-y-2">
-                  {ADMIN_MENU.map((menu) => (
-                    <button key={menu.id} onClick={() => setAdminTab(menu.id)} className={`w-full rounded-xl px-4 py-3 text-left text-sm font-semibold ${adminTab === menu.id ? "text-slate-900" : "bg-white/5 text-white"}`} style={adminTab === menu.id ? { backgroundColor: site.accent } : {}}>{menu.label}</button>
-                  ))}
-                </nav>
-              </aside>
-              <section>
-                {adminTab === "inquiries" && (
-                  <div className="rounded-[28px] bg-white p-6 shadow-sm">
-                    <h3 className="text-2xl font-bold">상담 신청 내역</h3>
-                    <div className="mt-6 space-y-4">
-                      {inquiries.map(item => (
-                        <div key={item.id} className="border p-4 rounded-xl">
-                          <div className="font-bold">{item.organization} - {item.name}</div>
-                          <div className="text-sm text-slate-500">{item.createdAt} | {item.total.toLocaleString()}원</div>
-                          <button onClick={() => removeInquiry(item.id)} className="text-rose-500 text-xs mt-2">삭제</button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {/* 다른 관리자 탭 내용들 생략 가능 혹은 필요한 부분 추가 */}
-              </section>
-            </div>
-          )}
-        </main>
-      ) : (
+      {view === "user" ? (
         <main>
-          {/* 홈페이지 메인 섹션 */}
-          <section className="relative overflow-hidden text-white py-20" style={{ background: `linear-gradient(135deg, ${site.primary} 0%, ${site.secondary} 100%)` }}>
+          {/* Hero Section */}
+          <section className="relative overflow-hidden bg-slate-950 py-24 text-white lg:py-32">
+            <div className="absolute inset-0 opacity-20" style={{ backgroundImage: `radial-gradient(circle at 2px 2px, ${site.accent} 1px, transparent 0)`, backgroundSize: '40px 40px' }}></div>
             <div className="relative mx-auto max-w-7xl px-6">
-              <h1 className="text-4xl md:text-6xl font-bold">{site.heroTitle}</h1>
-              <p className="mt-6 text-lg text-slate-200">{site.heroDescription}</p>
+              <div className="max-w-3xl">
+                <span className="mb-4 inline-block rounded-full bg-amber-500/10 px-4 py-1 text-xs font-bold tracking-widest text-amber-500 ring-1 ring-inset ring-amber-500/20">{site.topNotice}</span>
+                <h2 className="mb-8 text-5xl font-extrabold leading-[1.1] tracking-tight md:text-7xl whitespace-pre-line">
+                  {site.heroTitle}
+                </h2>
+                <p className="mb-10 text-lg leading-relaxed text-slate-400 md:text-xl">
+                  {site.heroDescription}
+                </p>
+                <div className="flex flex-wrap gap-4">
+                  <button className="rounded-full bg-amber-500 px-8 py-4 text-sm font-bold text-slate-950 transition-transform hover:scale-105" style={{ backgroundColor: site.accent }}>{site.primaryButton}</button>
+                  <button className="rounded-full border border-slate-700 px-8 py-4 text-sm font-bold text-white transition-colors hover:bg-slate-800">{site.secondaryButton}</button>
+                </div>
+              </div>
             </div>
           </section>
 
-          {/* 서비스 카드 섹션 */}
-          <section className="mx-auto max-w-7xl px-6 py-20">
-            <SectionHeading eyebrow="Services" title="통합 컨설팅 서비스" center />
-            <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              {site.services.map(s => <ServiceCard key={s.id} title={s.title} desc={s.desc} />)}
+          {/* Service Cards */}
+          <section className="mx-auto max-w-7xl px-6 py-24">
+            <div className="mb-16 text-center">
+              <h3 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">Core Consulting</h3>
+              <p className="mt-4 text-slate-500">전문적인 분석과 풍부한 실무 경험으로 법인의 초석을 다집니다.</p>
+            </div>
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+              {site.services.map((s) => (
+                <div key={s.id} className="group rounded-3xl border border-slate-100 bg-white p-8 shadow-sm transition-all hover:-translate-y-2 hover:shadow-xl">
+                  <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50 text-3xl group-hover:bg-amber-50">{s.icon}</div>
+                  <h4 className="mb-3 text-xl font-bold text-slate-900">{s.title}</h4>
+                  <p className="text-sm leading-relaxed text-slate-500">{s.desc}</p>
+                </div>
+              ))}
             </div>
           </section>
 
-          {/* 설립유형 검토 섹션 */}
-          <section id="establishment-review" className="bg-white py-20 border-t">
+          {/* Branding Pricing */}
+          <section className="bg-slate-50 py-24">
             <div className="mx-auto max-w-7xl px-6">
-              <SectionHeading eyebrow="Establishment" title={site.establishmentIntroTitle} center />
-              <div className="mt-12 grid gap-6 lg:grid-cols-4">
-                {ESTABLISHMENT_TYPES.map(type => (
-                  <EstablishmentTypeCard key={type.id} item={type} active={selectedEstablishment === type.id} onClick={() => setSelectedEstablishment(type.id)} />
+              <div className="mb-16 text-center">
+                <h3 className="text-3xl font-bold text-slate-900 md:text-4xl">Branding Service</h3>
+                <p className="mt-4 text-slate-500">기관의 정체성을 시각적 예술로 승화시키는 프리미엄 솔루션</p>
+              </div>
+              <div className="grid gap-8 lg:grid-cols-3">
+                {BRANDING_PACKAGES.map((p) => (
+                  <div key={p.id} className={`relative flex flex-col rounded-[2.5rem] border p-10 transition-all ${selectedPkg === p.id ? 'border-amber-500 bg-white shadow-2xl ring-1 ring-amber-500' : 'border-slate-200 bg-white/50'}`}>
+                    {p.popular && <span className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-amber-500 px-4 py-1 text-[10px] font-bold text-white">가장 선호하는 솔루션</span>}
+                    <div className="mb-8">
+                      <p className="text-xs font-bold uppercase tracking-widest text-amber-600">{p.badge}</p>
+                      <h4 className="mt-2 text-3xl font-black text-slate-950">{p.name}</h4>
+                      <p className="text-sm text-slate-400">{p.subtitle}</p>
+                    </div>
+                    <div className="mb-8">
+                      <span className="text-4xl font-bold text-slate-950">{p.range}</span>
+                    </div>
+                    <p className="mb-8 text-sm leading-relaxed text-slate-500">{p.description}</p>
+                    <ul className="mb-10 flex-1 space-y-4">
+                      {p.features.map(f => (
+                        <li key={f} className="flex items-center gap-3 text-sm text-slate-600">
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-[10px] text-amber-600">✓</span>
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+                    <button onClick={() => setSelectedPkg(p.id)} className={`rounded-2xl py-4 text-sm font-bold transition-all ${selectedPkg === p.id ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                      {selectedPkg === p.id ? '선택됨' : '패키지 선택'}
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>
           </section>
-
-          {/* 브랜딩 견적 섹션 */}
-          <section id="branding-service" className="py-20 bg-slate-50">
-            <div className="mx-auto max-w-7xl px-6">
-              <SectionHeading eyebrow="Estimate" title="실시간 견적 확인" center />
-              <div className="mt-12 grid gap-8 lg:grid-cols-3">
-                <div className="lg:col-span-2 space-y-6">
-                  {packages.map(p => <button key={p.id} onClick={() => setSelectedPackage(p.id)} className={`block w-full p-4 border rounded-xl ${selectedPackage === p.id ? 'border-blue-500 bg-blue-50' : 'bg-white'}`}>{p.name} - {p.range}</button>)}
-                </div>
-                <div className="bg-white p-6 rounded-[28px] shadow-lg border">
-                  <h4 className="text-xl font-bold mb-4">최종 견적</h4>
-                  <div className="text-3xl font-bold text-blue-600">{formatKRW(total)}</div>
-                  <button className="w-full mt-6 py-3 bg-slate-900 text-white rounded-xl font-bold">상담 신청하기</button>
+        </main>
+      ) : (
+        /* Admin Page - 로그인 보안 없이 간소화된 버전 */
+        <main className="mx-auto max-w-4xl px-6 py-12">
+          <div className="mb-8 flex items-center justify-between">
+            <h2 className="text-2xl font-bold">Admin Console</h2>
+            <button onClick={handleSave} className="rounded-lg bg-amber-500 px-6 py-2 text-sm font-bold text-white shadow-lg">모든 변경사항 저장</button>
+          </div>
+          
+          <div className="space-y-8 rounded-3xl border border-slate-200 bg-white p-8">
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase text-slate-400">플랫폼 명칭</label>
+                <input value={site.platformName} onChange={e => setSite({...site, platformName: e.target.value})} className="w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-amber-500" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase text-slate-400">메인 강조색</label>
+                <div className="flex gap-2">
+                  <input type="color" value={site.accent} onChange={e => setSite({...site, accent: e.target.value})} className="h-11 w-11 rounded-lg border-none" />
+                  <input value={site.accent} onChange={e => setSite({...site, accent: e.target.value})} className="flex-1 rounded-xl border border-slate-200 p-3 text-sm" />
                 </div>
               </div>
             </div>
-          </section>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase text-slate-400">헤로 섹션 타이틀 (줄바꿈 가능)</label>
+              <textarea rows={3} value={site.heroTitle} onChange={e => setSite({...site, heroTitle: e.target.value})} className="w-full rounded-xl border border-slate-200 p-3 text-sm" />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase text-slate-400">헤로 섹션 설명</label>
+              <textarea rows={4} value={site.heroDescription} onChange={e => setSite({...site, heroDescription: e.target.value})} className="w-full rounded-xl border border-slate-200 p-3 text-sm" />
+            </div>
+
+            <div className="border-t pt-8">
+               <h4 className="mb-4 text-sm font-bold text-slate-950">컨설팅 서비스 편집</h4>
+               <div className="grid gap-4 md:grid-cols-2">
+                 {site.services.map((s, idx) => (
+                   <div key={idx} className="rounded-2xl bg-slate-50 p-4">
+                     <input value={s.title} onChange={e => {
+                       const newServices = [...site.services];
+                       newServices[idx].title = e.target.value;
+                       setSite({...site, services: newServices});
+                     }} className="mb-2 w-full bg-transparent font-bold outline-none" />
+                     <textarea value={s.desc} onChange={e => {
+                       const newServices = [...site.services];
+                       newServices[idx].desc = e.target.value;
+                       setSite({...site, services: newServices});
+                     }} className="w-full bg-transparent text-xs text-slate-500 outline-none" rows={2} />
+                   </div>
+                 ))}
+               </div>
+            </div>
+          </div>
         </main>
       )}
-      
-      <footer className="p-8 border-t text-center text-sm text-slate-500">
-        {site.footerText}
+
+      {/* Footer */}
+      <footer className="border-t border-slate-100 bg-white py-12 text-center">
+        <p className="text-sm font-medium text-slate-400">{site.footerText}</p>
+        <div className="mt-4 flex justify-center gap-6 text-xs text-slate-500">
+          <span>T. {site.phone}</span>
+          <span>E. {site.email}</span>
+        </div>
       </footer>
     </div>
   );
